@@ -129,3 +129,7 @@ python <skill>/scripts/validate_spec.py spec.json \
 
 Khi bật cờ này, mọi chức năng phải có evidence refs và mọi ref phải tồn tại,
 không stale, đúng source hiện tại.
+
+## Removed functionality
+
+Evidence referenced only by `REMOVED_PENDING_REVIEW` historical rows may become stale or point to deleted source. It remains useful as history but does not block validation/publication of active functionality.

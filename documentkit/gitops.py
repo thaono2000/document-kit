@@ -10,6 +10,7 @@ SOURCE_EXTENSIONS = {
     ".gql", ".proto", ".yaml", ".yml", ".json", ".toml"
 }
 
+
 @dataclass
 class PullResult:
     before: str
@@ -49,7 +50,7 @@ def unresolved(repo: Path) -> list[str]:
 
 
 def changed_files(repo: Path, before: str, after: str) -> list[dict]:
-    if before == after:
+    if not before or not after or before == after:
         return []
     out = _git(repo, "diff", "--name-status", "--find-renames", f"{before}..{after}").stdout
     rows = []
@@ -69,12 +70,52 @@ def has_potential_logic_changes(rows: list[dict]) -> bool:
     for row in rows:
         p = Path(row.get("path", ""))
         if p.suffix.lower() in SOURCE_EXTENSIONS:
-            # Ignore lockfiles and obvious generated metadata, but be conservative otherwise.
             low = p.name.lower()
             if low in {"package-lock.json", "composer.lock", "yarn.lock", "pnpm-lock.yaml"}:
                 continue
             return True
     return False
+
+
+def capture_heads(repositories, *, require_clean: bool = True) -> dict[str, str]:
+    """Capture an immutable analysis snapshot for all configured repositories."""
+    snap: dict[str, str] = {}
+    problems: list[str] = []
+    for repo in repositories:
+        if not repo.path.is_dir() or not is_git_repo(repo.path):
+            problems.append(f"{repo.name}: not a Git repository at {repo.path}")
+            continue
+        if require_clean:
+            rows = dirty(repo.path)
+            if rows:
+                problems.append(f"{repo.name}: dirty worktree: " + "; ".join(rows[:8]))
+        unresolved_rows = unresolved(repo.path)
+        if unresolved_rows:
+            problems.append(f"{repo.name}: unresolved conflicts: " + ", ".join(unresolved_rows[:8]))
+        snap[repo.name] = head(repo.path)
+    if problems:
+        raise DocumentKitError("Source snapshot is not safe for high-trust analysis:\n" + "\n".join(problems))
+    return snap
+
+
+def assert_heads_unchanged(repositories, expected: dict[str, str], *, require_clean: bool = True) -> None:
+    problems: list[str] = []
+    for repo in repositories:
+        want = expected.get(repo.name)
+        if want is None:
+            problems.append(f"{repo.name}: missing expected commit in source snapshot")
+            continue
+        got = head(repo.path)
+        if got != want:
+            problems.append(f"{repo.name}: HEAD changed during analysis ({want[:12]} -> {got[:12]})")
+        if require_clean:
+            rows = dirty(repo.path)
+            if rows:
+                problems.append(f"{repo.name}: worktree became dirty during analysis")
+        if unresolved(repo.path):
+            problems.append(f"{repo.name}: unresolved conflict appeared during analysis")
+    if problems:
+        raise DocumentKitError("Source changed while documentation was being generated; publication aborted:\n" + "\n".join(problems))
 
 
 def pull(repo: Path, remote: str, branch: str, *, require_clean: bool) -> PullResult:

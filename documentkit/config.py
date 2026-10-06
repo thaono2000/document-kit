@@ -7,11 +7,13 @@ import tomllib
 
 DEFAULT_ALLOWED = ["develop", "dev", "staging", "stg", "production", "prod"]
 
+
 @dataclass
 class Repository:
     name: str
     path: Path
     cbm_project: str | None = None
+
 
 @dataclass
 class Config:
@@ -22,6 +24,7 @@ class Config:
     cache_dir: Path
     spec_json: Path
     markdown: Path
+    html: Path
     xlsx: Path | None
     changelog: Path
     allowed_branches: list[str] = field(default_factory=lambda: list(DEFAULT_ALLOWED))
@@ -74,13 +77,21 @@ def load_config(path: str | Path) -> Config:
     cache_dir = _resolve(base, project.get("cache_dir"), ".document-kit/cache")
 
     repos: list[Repository] = []
+    seen_names: set[str] = set()
     for row in data.get("repositories", []):
-        name = str(row["name"])
+        name = str(row["name"]).strip()
+        if not name:
+            raise ValueError("repository name must not be empty")
+        if name in seen_names:
+            raise ValueError(f"duplicate repository name: {name}")
+        seen_names.add(name)
         repos.append(Repository(
             name=name,
             path=_resolve(base, row.get("path"), name),
             cbm_project=str(row.get("cbm_project") or name),
         ))
+
+    xlsx_value = outputs.get("xlsx", "")
 
     return Config(
         config_path=cp,
@@ -90,7 +101,8 @@ def load_config(path: str | Path) -> Config:
         cache_dir=cache_dir,
         spec_json=_resolve(base, outputs.get("spec_json"), "docs/spec.json"),
         markdown=_resolve(base, outputs.get("markdown"), "docs/SPEC.md"),
-        xlsx=_resolve(base, outputs.get("xlsx"), "docs/SPEC.xlsx") if outputs.get("xlsx", "docs/SPEC.xlsx") else None,
+        html=_resolve(base, outputs.get("html"), "docs/index.html"),
+        xlsx=_resolve(base, str(xlsx_value), "docs/SPEC.xlsx") if xlsx_value else None,
         changelog=_resolve(base, outputs.get("changelog"), "docs/CHANGELOG.md"),
         allowed_branches=[str(x) for x in automation.get("allowed_branches", DEFAULT_ALLOWED)],
         auto_update=bool(automation.get("auto_update", True)),

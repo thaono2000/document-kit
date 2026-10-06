@@ -9,11 +9,19 @@
       "start": 311,
       "end": 382,
       "analysis": {
-        "inputs": ["booking"],
-        "behavior": ["Kiểm tra điều kiện huỷ trước khi cập nhật trạng thái"],
-        "outputs": ["Kết quả huỷ"],
+        "inputs": [
+          "booking"
+        ],
+        "behavior": [
+          "Kiểm tra điều kiện huỷ trước khi cập nhật trạng thái"
+        ],
+        "outputs": [
+          "Kết quả huỷ"
+        ],
         "errors": [],
-        "side_effects": ["Cập nhật booking"],
+        "side_effects": [
+          "Cập nhật booking"
+        ],
         "calls": [],
         "confidence": "high",
         "notes": []
@@ -23,8 +31,53 @@
   "spec_updates": [],
   "spec_additions": [],
   "spec_removals": [],
-  "api_upserts": [],
+  "api_upserts": [
+    {
+      "phuong_thuc": "POST",
+      "endpoint": "/api/bookings/{id}/cancel",
+      "chuc_nang": "Huỷ booking",
+      "tham_so": "id",
+      "phan_hoi": "200/4xx",
+      "quyen": "Hotel Admin",
+      "neo": [
+        {
+          "repo": "RepitteGlobal-BookingService",
+          "path": "app/Services/BookingService.php:311"
+        }
+      ],
+      "evidence_refs": [
+        {
+          "repo": "RepitteGlobal-BookingService",
+          "path": "app/Services/BookingService.php",
+          "symbol": "BookingService::cancelBooking"
+        }
+      ]
+    }
+  ],
   "api_removals": [],
-  "top_level_updates": {},
+  "top_level_updates": {
+    "diagrams": [
+      {
+        "id": "booking-cancel-flow",
+        "type": "business_flow",
+        "title": "Luồng huỷ booking",
+        "description": "Chỉ thêm khi flow giúp làm rõ hành vi.",
+        "mermaid": "flowchart TD\nA[Request] --> B{Đủ điều kiện huỷ?}\nB -->|Có| C[Cập nhật booking]",
+        "neo": [
+          {
+            "repo": "RepitteGlobal-BookingService",
+            "path": "app/Services/BookingService.php:311-382"
+          }
+        ],
+        "evidence_refs": [
+          {
+            "repo": "RepitteGlobal-BookingService",
+            "path": "app/Services/BookingService.php",
+            "symbol": "BookingService::cancelBooking"
+          }
+        ]
+      }
+    ]
+  },
   "changelog": []
 }

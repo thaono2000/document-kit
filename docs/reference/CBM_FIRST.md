@@ -67,3 +67,7 @@ Nếu CBM không có, index lỗi, hoặc coverage không đủ cho stack hiện
 `scan_repo.py`, `extract_surface.py`, grep có kiểm soát và đọc source trực tiếp.
 
 Không được vì CBM thiếu edge mà bỏ qua một entry point đã thấy trong source.
+
+## Source snapshot rule
+
+CBM discovery and source verification run against an exact captured HEAD for every configured repository. DocumentKit re-checks all HEADs immediately before publication; any change aborts the transaction.

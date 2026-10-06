@@ -3,10 +3,12 @@ from __future__ import annotations
 import copy
 import hashlib
 import re
-from pathlib import Path
+from datetime import datetime, timezone
 from typing import Any
 from .evidence import EvidenceStore
 from .util import DocumentKitError
+
+REMOVED_STATUS = "REMOVED_PENDING_REVIEW"
 
 
 def _slug(s: str) -> str:
@@ -45,6 +47,10 @@ def affected_by_audit(spec: dict[str, Any], audit: dict[str, dict]) -> list[dict
     result = []
     for module in spec.get("modules", []):
         for feat in module.get("chuc_nang", []):
+            # Historical evidence for removed functionality is intentionally allowed
+            # to go stale/missing. It must not block unrelated future updates.
+            if feat.get("trang_thai") == REMOVED_STATUS:
+                continue
             refs = feat.get("evidence_refs") or []
             bad = []
             for ref in refs:
@@ -72,11 +78,29 @@ def _resolve_ref(ref: Any, store: EvidenceStore) -> str:
     raise DocumentKitError("unsupported evidence_refs item")
 
 
+def _resolve_refs_in_row(row: dict[str, Any], store: EvidenceStore) -> dict[str, Any]:
+    row = copy.deepcopy(row)
+    if "evidence_refs" in row:
+        row["evidence_refs"] = [_resolve_ref(x, store) for x in row.get("evidence_refs", [])]
+    return row
+
+
+def _mark_removed(row: dict[str, Any], reason: str, removed_commit: str | None = None) -> None:
+    row["trang_thai"] = REMOVED_STATUS
+    row["removal_reason"] = reason
+    row.setdefault("removed_at", datetime.now(timezone.utc).isoformat(timespec="seconds"))
+    if removed_commit:
+        row["removed_commit"] = removed_commit
+    note = str(row.get("ghi_chu", "")).strip()
+    marker = "[DocumentKit] " + reason
+    if marker not in note:
+        row["ghi_chu"] = (note + "\n" if note else "") + marker
+
+
 def apply_patch(spec: dict[str, Any], patch: dict[str, Any], store: EvidenceStore) -> dict[str, Any]:
     out = ensure_doc_ids(copy.deepcopy(spec))
     fmap = feature_map(out)
 
-    # Save/refresh source-verified symbol evidence first. The kit computes hashes itself.
     for ev in patch.get("evidence_updates", []) or []:
         store.put(ev)
 
@@ -86,60 +110,70 @@ def apply_patch(spec: dict[str, Any], patch: dict[str, Any], store: EvidenceStor
         if doc_id not in fmap or not isinstance(replacement, dict):
             raise DocumentKitError(f"invalid spec update: {doc_id}")
         module, old = fmap[doc_id]
-        replacement = copy.deepcopy(replacement)
+        replacement = _resolve_refs_in_row(replacement, store)
         replacement["doc_id"] = doc_id
-        replacement["evidence_refs"] = [_resolve_ref(x, store) for x in replacement.get("evidence_refs", [])]
         idx = module["chuc_nang"].index(old)
         module["chuc_nang"][idx] = replacement
         fmap[doc_id] = (module, replacement)
 
     for row in patch.get("spec_additions", []) or []:
         module_name = str(row.get("module", "")).strip()
-        feat = copy.deepcopy(row.get("function"))
+        feat = row.get("function")
         if not module_name or not isinstance(feat, dict):
             raise DocumentKitError("invalid spec addition")
+        feat = _resolve_refs_in_row(feat, store)
         module = next((m for m in out.setdefault("modules", []) if m.get("ten") == module_name), None)
         if module is None:
             module = {"ten": module_name, "mo_ta": str(row.get("module_description", "")), "doi_tuong": [], "chuc_nang": []}
             out["modules"].append(module)
         feat.setdefault("doc_id", "doc_" + hashlib.sha256((module_name + "\0" + str(feat.get("ten", ""))).encode()).hexdigest()[:16])
-        feat["evidence_refs"] = [_resolve_ref(x, store) for x in feat.get("evidence_refs", [])]
         module.setdefault("chuc_nang", []).append(feat)
 
-    # Removal is conservative: never silently delete knowledge. Mark it for review.
     for row in patch.get("spec_removals", []) or []:
         doc_id = str(row.get("doc_id", ""))
         if doc_id in fmap:
             _, feat = fmap[doc_id]
-            feat["trang_thai"] = "REMOVED_PENDING_REVIEW"
-            reason = str(row.get("reason", "entry point removed or no longer reachable"))
-            note = str(feat.get("ghi_chu", "")).strip()
-            feat["ghi_chu"] = (note + "\n" if note else "") + "[DocumentKit] " + reason
+            _mark_removed(
+                feat,
+                str(row.get("reason", "entry point removed or no longer reachable")),
+                str(row.get("removed_commit") or "") or None,
+            )
 
-    # Incremental API-table maintenance.
+    # API removals are historical records too. Do not silently delete rows.
     api = out.setdefault("api", [])
-    removals = {(str(x.get("phuong_thuc", "")).upper(), str(x.get("endpoint", ""))) for x in (patch.get("api_removals", []) or [])}
-    if removals:
-        api[:] = [x for x in api if (str(x.get("phuong_thuc", "")).upper(), str(x.get("endpoint", ""))) not in removals]
+    removals = {
+        (str(x.get("phuong_thuc", "")).upper(), str(x.get("endpoint", ""))): x
+        for x in (patch.get("api_removals", []) or [])
+    }
+    for existing in api:
+        key = (str(existing.get("phuong_thuc", "")).upper(), str(existing.get("endpoint", "")))
+        if key in removals:
+            rem = removals[key]
+            _mark_removed(existing, str(rem.get("reason", "route removed")), str(rem.get("removed_commit") or "") or None)
+
     for row in patch.get("api_upserts", []) or []:
         if not isinstance(row, dict):
             raise DocumentKitError("api_upserts items must be objects")
+        row = _resolve_refs_in_row(row, store)
         key = (str(row.get("phuong_thuc", "")).upper(), str(row.get("endpoint", "")))
         if not key[0] or not key[1]:
             raise DocumentKitError("api_upsert requires phuong_thuc + endpoint")
         existing = next((x for x in api if (str(x.get("phuong_thuc", "")).upper(), str(x.get("endpoint", ""))) == key), None)
         if existing is None:
-            api.append(copy.deepcopy(row))
+            api.append(row)
         else:
-            existing.clear(); existing.update(copy.deepcopy(row))
+            existing.clear(); existing.update(row)
 
-    # The agent may replace other spec sections only when its source analysis says
-    # those sections are impacted. Keeping this explicit avoids regenerating the
-    # whole document for a small business-logic change.
-    allowed_top = {"tong_quan_md", "mo_hinh_du_lieu", "bao_mat", "rui_ro", "ghi_chu_md", "pham_vi", "du_an"}
+    allowed_top = {
+        "tong_quan_md", "mo_hinh_du_lieu", "bao_mat", "rui_ro", "ghi_chu_md",
+        "pham_vi", "du_an", "diagrams", "ui_images"
+    }
     for key, value in (patch.get("top_level_updates") or {}).items():
         if key not in allowed_top:
             raise DocumentKitError(f"unsupported top_level_updates key: {key}")
-        out[key] = copy.deepcopy(value)
+        value = copy.deepcopy(value)
+        if key in {"mo_hinh_du_lieu", "rui_ro", "diagrams", "ui_images"} and isinstance(value, list):
+            value = [_resolve_refs_in_row(x, store) if isinstance(x, dict) else x for x in value]
+        out[key] = value
 
     return ensure_doc_ids(out)

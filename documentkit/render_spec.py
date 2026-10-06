@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""render_spec.py - render spec.json into SPEC.md and/or SPEC.xlsx.
+"""render_spec.py - render spec.json into review/export formats (Markdown and optional XLSX).
 
-One source of truth, two outputs. The model writes the facts once into
+One source of truth, deterministic outputs. The model writes the facts once into
 spec.json; this script lays them out. That is why the two files can never
 disagree with each other, and why choosing a format is a flag rather than a
 second round of writing.
@@ -126,6 +126,7 @@ def render_feature_md(num, feat):
         if value:
             out.append("    - **{}:** {}".format(label, value))
 
+    field("Trạng thái", feat.get("trang_thai"))
     field("Mô tả", feat.get("mo_ta"))
     field("Đối tượng sử dụng", join(feat.get("doi_tuong", [])))
 
@@ -266,23 +267,38 @@ def render_md(spec, split_dir=None, md_path=None):
     else:
         out += ["*Không xác định được mô hình dữ liệu từ mã nguồn.*", ""]
 
-    # ---- 5. Lưu ý kỹ thuật
-    out += ["## 5. Lưu ý kỹ thuật & Ràng buộc (Constraints & Technical Notes)", ""]
+    # ---- 5. Sơ đồ
+    out += ["## 5. Sơ đồ (Diagrams)", ""]
+    diagrams = spec.get("diagrams", []) or []
+    if diagrams:
+        for i, d in enumerate(diagrams, 1):
+            out.append("### 5.{}. {}".format(i, d.get("title", "Sơ đồ")))
+            if d.get("description"):
+                out += ["", str(d["description"])]
+            if d.get("neo"):
+                out += ["", "Neo mã nguồn: `{}`".format(anchors_text(d.get("neo")))]
+            if d.get("mermaid"):
+                out += ["", "```mermaid", str(d["mermaid"]).rstrip(), "```", ""]
+    else:
+        out += ["*Chưa có sơ đồ đã được xác minh.*", ""]
+
+    # ---- 6. Lưu ý kỹ thuật
+    out += ["## 6. Lưu ý kỹ thuật & Ràng buộc (Constraints & Technical Notes)", ""]
     if spec.get("bao_mat"):
-        out += ["### 5.1. Bảo mật", "", bullets(spec["bao_mat"]), ""]
+        out += ["### 6.1. Bảo mật", "", bullets([x.get("noi_dung", "") if isinstance(x, dict) else x for x in spec["bao_mat"]]), ""]
     risks = spec.get("rui_ro", [])
     if risks:
         risks = sorted(risks, key=lambda r: SEVERITY_ORDER.get(str(r.get("muc_do", "")).lower(), 9))
-        out += ["### 5.2. Rủi ro & tồn đọng", "",
+        out += ["### 6.2. Rủi ro & tồn đọng", "",
                 md_table(["Mức độ", "Hạng mục", "Vấn đề", "Ảnh hưởng", "Neo mã nguồn"],
                          [[r.get("muc_do", ""), r.get("hang_muc", ""), r.get("van_de", ""),
                            r.get("anh_huong", ""), "`{}`".format(anchors_text(r.get("neo")))] for r in risks]), ""]
     if spec.get("ghi_chu_md"):
         out += [spec["ghi_chu_md"], ""]
 
-    # ---- 6. Phạm vi
+    # ---- 7. Phạm vi
     pv = spec.get("pham_vi", {})
-    out += ["## 6. Phạm vi & độ tin cậy", ""]
+    out += ["## 7. Phạm vi & độ tin cậy", ""]
     for label, key in (("Đã phân tích", "da_quet"), ("Bỏ qua", "bo_qua"),
                        ("Chưa xác định được", "chua_ro"), ("Mã nguồn chết / không dùng", "ma_chet")):
         v = pv.get(key)
@@ -330,6 +346,7 @@ def sheet_data(spec):
             "2.{}.{}".format(mi, fi),
             module.get("ten", ""),
             f.get("ten", ""),
+            f.get("trang_thai", "ACTIVE"),
             f.get("mo_ta", ""),
             join(f.get("doi_tuong", [])),
             # Excel không hiểu dấu backtick của Markdown, bỏ đi cho dễ đọc.
@@ -360,9 +377,9 @@ def sheet_data(spec):
 
     return [
         ("Tổng quan", ["Hạng mục", "Nội dung"], overview, [26, 90]),
-        ("Chức năng", ["Mã", "Module", "Chức năng", "Mô tả", "Đối tượng", "Đầu vào",
+        ("Chức năng", ["Mã", "Module", "Chức năng", "Trạng thái", "Mô tả", "Đối tượng", "Đầu vào",
                        "Luồng xử lý", "Đầu ra", "Phân quyền", "Neo mã nguồn", "Độ tin cậy", "Ghi chú"],
-         features, [9, 22, 26, 44, 16, 38, 46, 32, 16, 28, 11, 38]),
+         features, [9, 22, 26, 24, 44, 16, 38, 46, 32, 16, 28, 11, 38]),
         ("API", ["Phương thức", "Endpoint", "Chức năng", "Tham số", "Phản hồi", "Quyền", "Neo mã nguồn"],
          apis, [12, 34, 30, 34, 30, 16, 28]),
         ("Dữ liệu", ["Bảng / Collection", "Trường", "Kiểu", "Ràng buộc", "Ý nghĩa", "Neo mã nguồn"],
@@ -377,8 +394,8 @@ def render_xlsx(spec, path):
         from openpyxl import Workbook
         from openpyxl.styles import Alignment, Font, PatternFill
         from openpyxl.utils import get_column_letter
-    except ImportError:
-        return render_csv_fallback(spec, path)
+    except ImportError as exc:
+        raise RuntimeError("XLSX output was requested but openpyxl is not installed") from exc
 
     wb = Workbook()
     wb.remove(wb.active)

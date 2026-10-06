@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "document-kit"
-version = "0.1.0"
-description = "CBM-first source-to-spec documentation kit with symbol evidence cache and pull-triggered incremental updates"
+version = "0.2.0"
+description = "CBM-first source-to-spec documentation kit with evidence cache, transactional publishing, retry, HTML reader and pull-triggered updates"
 requires-python = ">=3.11"
 dependencies = []
 

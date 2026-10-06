@@ -1,5 +1,5 @@
 {
-  "_huong_dan": "File mẫu rút gọn - chép cấu trúc, đừng chép nội dung. Mọi neo ở đây trỏ vào evals/fixtures/express-shop. Đặc tả đầy đủ từng trường nằm ở references/spec-schema.md.",
+  "_huong_dan": "Ví dụ cấu trúc minh hoạ, không phải fixture chạy validator. evidence_refs dùng key minh hoạ; xem docs/reference/SPEC_SCHEMA.md.",
   "du_an": {
     "ten": "express-shop",
     "ngay": "2026-10-01",
@@ -77,7 +77,10 @@
             }
           ],
           "do_tin_cay": "cao",
-          "ghi_chu": "Không có bước xác thực email. Không có đường nào trong mã nguồn tạo được tài khoản admin hoặc warehouse - hai vai trò này phải tạo tay trực tiếp trong cơ sở dữ liệu."
+          "ghi_chu": "Không có bước xác thực email. Không có đường nào trong mã nguồn tạo được tài khoản admin hoặc warehouse - hai vai trò này phải tạo tay trực tiếp trong cơ sở dữ liệu.",
+          "evidence_refs": [
+            "sym_example_feature_1"
+          ]
         },
         {
           "ten": "Đăng nhập",
@@ -119,7 +122,10 @@
             }
           ],
           "do_tin_cay": "cao",
-          "ghi_chu": "Mã phiên không có hạn sử dụng và không có cơ chế thu hồi; đăng xuất chỉ là việc client tự xoá token."
+          "ghi_chu": "Mã phiên không có hạn sử dụng và không có cơ chế thu hồi; đăng xuất chỉ là việc client tự xoá token.",
+          "evidence_refs": [
+            "sym_example_feature_2"
+          ]
         }
       ]
     }
@@ -137,6 +143,9 @@
           "repo": "express-shop",
           "path": "src/routes/auth.js:7"
         }
+      ],
+      "evidence_refs": [
+        "sym_example_api_1"
       ]
     },
     {
@@ -151,6 +160,9 @@
           "repo": "express-shop",
           "path": "src/routes/auth.js:14"
         }
+      ],
+      "evidence_refs": [
+        "sym_example_api_2"
       ]
     }
   ],
@@ -183,6 +195,9 @@
           "rang_buoc": "customer | warehouse | admin, mặc định customer",
           "y_nghia": "quyết định quyền truy cập toàn hệ thống"
         }
+      ],
+      "evidence_refs": [
+        "sym_example_model_1"
       ]
     }
   ],
@@ -203,7 +218,10 @@
           "path": "src/routes/auth.js:19"
         }
       ],
-      "cau_hoi": "Có hệ thống nào bên ngoài repo này đang quản lý vòng đời token không?"
+      "cau_hoi": "Có hệ thống nào bên ngoài repo này đang quản lý vòng đời token không?",
+      "evidence_refs": [
+        "sym_example_risk_1"
+      ]
     }
   ],
   "ghi_chu_md": "",
@@ -220,5 +238,24 @@
     "ma_chet": [
       "src/routes/reports.js:5 — router không được gắn vào ứng dụng ở bất kỳ đâu"
     ]
-  }
+  },
+  "diagrams": [
+    {
+      "id": "auth-flow",
+      "type": "business_flow",
+      "title": "Luồng đăng nhập mẫu",
+      "description": "Sơ đồ minh hoạ cấu trúc diagram có neo và evidence.",
+      "mermaid": "flowchart TD\nA[Nhập email/mật khẩu] --> B[Kiểm tra tài khoản]\nB --> C[Ký JWT]",
+      "neo": [
+        {
+          "repo": "express-shop",
+          "path": "src/routes/auth.js:14"
+        }
+      ],
+      "evidence_refs": [
+        "sym_example_feature_2"
+      ]
+    }
+  ],
+  "ui_images": []
 }

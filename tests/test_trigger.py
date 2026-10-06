@@ -25,7 +25,7 @@ class PullTriggerPolicyTests(unittest.TestCase):
         return Config(
             config_path=root/'document-kit.toml', project_name='P', workspace=root,
             state_dir=root/'.document-kit', cache_dir=root/'.document-kit/cache',
-            spec_json=root/'docs/spec.json', markdown=root/'docs/SPEC.md', xlsx=None, changelog=root/'docs/CHANGELOG.md',
+            spec_json=root/'docs/spec.json', markdown=root/'docs/SPEC.md', html=root/'docs/index.html', xlsx=None, changelog=root/'docs/CHANGELOG.md',
             allowed_branches=['develop','dev','staging','stg','production','prod'], auto_update=True,
             require_current_branch_match=True, require_clean_worktree=True,
             cbm_enabled=False, repositories=[Repository('RepoA',work,'RepoA')]

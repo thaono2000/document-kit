@@ -5,8 +5,9 @@ state_dir = ".document-kit"
 cache_dir = ".document-kit/cache"
 
 [automation]
-# Documentation is automatically updated ONLY after a successful document-kit pull
-# from one of these branch names, and only when HEAD changed.
+# Automatic documentation update happens only after a successful document-kit pull
+# from one of these branches and only when HEAD changed. Failed runs can be retried
+# explicitly with `document-kit retry` without requiring another source change.
 auto_update = true
 require_current_branch_match = true
 require_clean_worktree = true
@@ -18,7 +19,6 @@ command = "codebase-memory-mcp"
 depth = 5
 
 [cursor]
-# Cursor CLI command. Current Cursor CLI supports non-interactive `agent -p`.
 command = "agent"
 model = ""
 timeout_seconds = 1800
@@ -26,7 +26,9 @@ timeout_seconds = 1800
 [outputs]
 spec_json = "docs/spec.json"
 markdown = "docs/SPEC.md"
-xlsx = "docs/SPEC.xlsx"
+html = "docs/index.html"
+# Optional: set this only when an Excel export is actually needed.
+xlsx = ""
 changelog = "docs/CHANGELOG.md"
 
 [[repositories]]
@@ -39,7 +41,8 @@ name = "RepitteGlobal-BookingService"
 path = "RepitteGlobal-BookingService"
 cbm_project = "RepitteGlobal-BookingService"
 
+# Repositories may also live outside the workspace.
 [[repositories]]
 name = "RepitteGlobal-ManagementService"
-path = "RepitteGlobal-ManagementService"
+path = "/absolute/path/to/RepitteGlobal-ManagementService"
 cbm_project = "RepitteGlobal-ManagementService"
