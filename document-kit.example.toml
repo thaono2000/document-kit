@@ -1,0 +1,45 @@
+[project]
+name = "RepitteGlobal"
+workspace = "."
+state_dir = ".document-kit"
+cache_dir = ".document-kit/cache"
+
+[automation]
+# Documentation is automatically updated ONLY after a successful document-kit pull
+# from one of these branch names, and only when HEAD changed.
+auto_update = true
+require_current_branch_match = true
+require_clean_worktree = true
+allowed_branches = ["develop", "dev", "staging", "stg", "production", "prod"]
+
+[cbm]
+enabled = true
+command = "codebase-memory-mcp"
+depth = 5
+
+[cursor]
+# Cursor CLI command. Current Cursor CLI supports non-interactive `agent -p`.
+command = "agent"
+model = ""
+timeout_seconds = 1800
+
+[outputs]
+spec_json = "docs/spec.json"
+markdown = "docs/SPEC.md"
+xlsx = "docs/SPEC.xlsx"
+changelog = "docs/CHANGELOG.md"
+
+[[repositories]]
+name = "RepitteGlobal-AdminPortal"
+path = "RepitteGlobal-AdminPortal"
+cbm_project = "RepitteGlobal-AdminPortal"
+
+[[repositories]]
+name = "RepitteGlobal-BookingService"
+path = "RepitteGlobal-BookingService"
+cbm_project = "RepitteGlobal-BookingService"
+
+[[repositories]]
+name = "RepitteGlobal-ManagementService"
+path = "RepitteGlobal-ManagementService"
+cbm_project = "RepitteGlobal-ManagementService"

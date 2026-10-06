@@ -1,0 +1,19 @@
+[build-system]
+requires = ["setuptools", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "document-kit"
+version = "0.1.0"
+description = "CBM-first source-to-spec documentation kit with symbol evidence cache and pull-triggered incremental updates"
+requires-python = ">=3.11"
+dependencies = []
+
+[project.optional-dependencies]
+xlsx = ["openpyxl>=3.1"]
+
+[project.scripts]
+document-kit = "documentkit.cli:main"
+
+[tool.setuptools]
+packages = ["documentkit"]

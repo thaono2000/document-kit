@@ -1,0 +1,224 @@
+{
+  "_huong_dan": "File mẫu rút gọn - chép cấu trúc, đừng chép nội dung. Mọi neo ở đây trỏ vào evals/fixtures/express-shop. Đặc tả đầy đủ từng trường nằm ở references/spec-schema.md.",
+  "du_an": {
+    "ten": "express-shop",
+    "ngay": "2026-10-01",
+    "commit": "",
+    "nguon": "FEATURES.md",
+    "cong_nghe": [
+      "Node.js",
+      "Express 4",
+      "MongoDB + Mongoose 7",
+      "JWT",
+      "Stripe",
+      "Nodemailer"
+    ],
+    "kien_truc": "Monolith phân tầng: route nhận request, service xử lý nghiệp vụ, model Mongoose truy cập dữ liệu. Toàn bộ chạy trong một tiến trình duy nhất, kể cả job định kỳ.",
+    "co_so_du_lieu": "MongoDB, kết nối một lần lúc khởi động qua biến môi trường MONGO_URL",
+    "tich_hop": [
+      "Stripe — tính tiền thẻ khi đặt hàng và hoàn tiền khi huỷ đơn",
+      "SMTP — gửi toàn bộ email giao dịch"
+    ],
+    "diem_khoi_chay": "src/server.js:9, lắng nghe trên cổng lấy từ biến PORT (mặc định 3000)"
+  },
+  "tong_quan_md": "Hệ thống phục vụ hai nhóm người dùng khác nhau trên cùng một API: khách hàng mua hàng, và nhân viên kho xử lý đơn. Phân biệt hai nhóm bằng vai trò nằm trong mã phiên JWT.",
+  "modules": [
+    {
+      "ten": "Tài khoản khách hàng",
+      "mo_ta": "Cho phép khách tạo tài khoản và đăng nhập để lấy mã phiên dùng cho mọi thao tác còn lại.",
+      "doi_tuong": [
+        "Khách vãng lai",
+        "Khách hàng"
+      ],
+      "chuc_nang": [
+        {
+          "ten": "Đăng ký tài khoản",
+          "mo_ta": "Khách tự tạo tài khoản mới bằng email và mật khẩu, sau đó nhận email chào mừng.",
+          "doi_tuong": [
+            "Khách vãng lai"
+          ],
+          "dau_vao": [
+            {
+              "ten": "name",
+              "kieu": "chuỗi",
+              "bat_buoc": false,
+              "rang_buoc": "không kiểm tra"
+            },
+            {
+              "ten": "email",
+              "kieu": "chuỗi",
+              "bat_buoc": true,
+              "rang_buoc": "không được trùng - ràng buộc unique ở tầng cơ sở dữ liệu, không kiểm tra ở tầng ứng dụng"
+            },
+            {
+              "ten": "password",
+              "kieu": "chuỗi",
+              "bat_buoc": true,
+              "rang_buoc": "không kiểm tra độ dài hay độ mạnh"
+            }
+          ],
+          "luong_xu_ly": [
+            "Mã hoá mật khẩu một chiều bằng bcrypt (10 vòng)",
+            "Tạo bản ghi người dùng mới, luôn gán vai trò customer bất kể dữ liệu client gửi lên",
+            "Gửi email chào mừng",
+            "Trả về định danh tài khoản vừa tạo"
+          ],
+          "dau_ra": {
+            "thanh_cong": "201 Created, kèm id của tài khoản",
+            "loi": [
+              "500 — email trùng sẽ làm MongoDB báo lỗi unique và rơi xuống middleware xử lý lỗi chung, không có thông báo riêng"
+            ]
+          },
+          "phan_quyen": "Không yêu cầu đăng nhập",
+          "neo": [
+            {
+              "repo": "express-shop",
+              "path": "src/routes/auth.js:7"
+            }
+          ],
+          "do_tin_cay": "cao",
+          "ghi_chu": "Không có bước xác thực email. Không có đường nào trong mã nguồn tạo được tài khoản admin hoặc warehouse - hai vai trò này phải tạo tay trực tiếp trong cơ sở dữ liệu."
+        },
+        {
+          "ten": "Đăng nhập",
+          "mo_ta": "Khách đổi email và mật khẩu lấy mã phiên JWT để gọi các chức năng cần đăng nhập.",
+          "doi_tuong": [
+            "Khách hàng"
+          ],
+          "dau_vao": [
+            {
+              "ten": "email",
+              "kieu": "chuỗi",
+              "bat_buoc": true,
+              "rang_buoc": "phải khớp tài khoản đã có"
+            },
+            {
+              "ten": "password",
+              "kieu": "chuỗi",
+              "bat_buoc": true,
+              "rang_buoc": "so khớp với bản mã hoá đã lưu"
+            }
+          ],
+          "luong_xu_ly": [
+            "Tìm tài khoản theo email",
+            "So khớp mật khẩu bằng bcrypt",
+            "Nếu khớp, ký mã phiên JWT chứa id tài khoản và vai trò",
+            "Trả mã phiên về cho client"
+          ],
+          "dau_ra": {
+            "thanh_cong": "200 OK, kèm trường token",
+            "loi": [
+              "401 — sai email hoặc sai mật khẩu, dùng chung một thông báo"
+            ]
+          },
+          "phan_quyen": "Không yêu cầu đăng nhập",
+          "neo": [
+            {
+              "repo": "express-shop",
+              "path": "src/routes/auth.js:14"
+            }
+          ],
+          "do_tin_cay": "cao",
+          "ghi_chu": "Mã phiên không có hạn sử dụng và không có cơ chế thu hồi; đăng xuất chỉ là việc client tự xoá token."
+        }
+      ]
+    }
+  ],
+  "api": [
+    {
+      "phuong_thuc": "POST",
+      "endpoint": "/api/auth/register",
+      "chuc_nang": "Đăng ký tài khoản",
+      "tham_so": "{name, email, password}",
+      "phan_hoi": "201 {\"id\": \"...\"}",
+      "quyen": "Công khai",
+      "neo": [
+        {
+          "repo": "express-shop",
+          "path": "src/routes/auth.js:7"
+        }
+      ]
+    },
+    {
+      "phuong_thuc": "POST",
+      "endpoint": "/api/auth/login",
+      "chuc_nang": "Đăng nhập",
+      "tham_so": "{email, password}",
+      "phan_hoi": "200 {\"token\": \"...\"} | 401",
+      "quyen": "Công khai",
+      "neo": [
+        {
+          "repo": "express-shop",
+          "path": "src/routes/auth.js:14"
+        }
+      ]
+    }
+  ],
+  "mo_hinh_du_lieu": [
+    {
+      "ten": "users",
+      "mo_ta": "Tài khoản người dùng, dùng chung cho cả khách hàng lẫn nhân viên nội bộ.",
+      "neo": [
+        {
+          "repo": "express-shop",
+          "path": "src/models/User.js:11"
+        }
+      ],
+      "truong": [
+        {
+          "ten": "email",
+          "kieu": "chuỗi",
+          "rang_buoc": "duy nhất",
+          "y_nghia": "định danh đăng nhập"
+        },
+        {
+          "ten": "password",
+          "kieu": "chuỗi",
+          "rang_buoc": "lưu dạng băm bcrypt",
+          "y_nghia": "mật khẩu đã mã hoá"
+        },
+        {
+          "ten": "role",
+          "kieu": "chuỗi",
+          "rang_buoc": "customer | warehouse | admin, mặc định customer",
+          "y_nghia": "quyết định quyền truy cập toàn hệ thống"
+        }
+      ]
+    }
+  ],
+  "bao_mat": [
+    "Xác thực bằng JWT không trạng thái, khoá ký lấy từ biến môi trường JWT_SECRET (src/middleware/auth.js:6)",
+    "Mật khẩu băm bằng bcrypt 10 vòng, không lưu bản gốc (src/routes/auth.js:8)",
+    "Không thấy cấu hình CORS, rate limit hay helmet ở bất kỳ đâu trong mã nguồn"
+  ],
+  "rui_ro": [
+    {
+      "muc_do": "cao",
+      "hang_muc": "Tài khoản",
+      "van_de": "Mã phiên JWT được ký không kèm thời hạn",
+      "anh_huong": "Token rò rỉ sẽ dùng được vĩnh viễn, không có cách thu hồi ngoài việc đổi JWT_SECRET cho toàn hệ thống",
+      "neo": [
+        {
+          "repo": "express-shop",
+          "path": "src/routes/auth.js:19"
+        }
+      ],
+      "cau_hoi": "Có hệ thống nào bên ngoài repo này đang quản lý vòng đời token không?"
+    }
+  ],
+  "ghi_chu_md": "",
+  "pham_vi": {
+    "da_quet": [
+      "Toàn bộ 16 file trong repo"
+    ],
+    "bo_qua": [
+      "Không có thư mục vendor hay mã sinh tự động"
+    ],
+    "chua_ro": [
+      "Quy trình tạo tài khoản nội bộ (admin, warehouse)"
+    ],
+    "ma_chet": [
+      "src/routes/reports.js:5 — router không được gắn vào ứng dụng ở bất kỳ đâu"
+    ]
+  }
+}

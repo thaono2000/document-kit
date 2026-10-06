@@ -1,0 +1,30 @@
+{
+  "status": "ok",
+  "review_items": [],
+  "evidence_updates": [
+    {
+      "repo": "RepitteGlobal-BookingService",
+      "path": "app/Services/BookingService.php",
+      "symbol": "BookingService::cancelBooking",
+      "start": 311,
+      "end": 382,
+      "analysis": {
+        "inputs": ["booking"],
+        "behavior": ["Kiểm tra điều kiện huỷ trước khi cập nhật trạng thái"],
+        "outputs": ["Kết quả huỷ"],
+        "errors": [],
+        "side_effects": ["Cập nhật booking"],
+        "calls": [],
+        "confidence": "high",
+        "notes": []
+      }
+    }
+  ],
+  "spec_updates": [],
+  "spec_additions": [],
+  "spec_removals": [],
+  "api_upserts": [],
+  "api_removals": [],
+  "top_level_updates": {},
+  "changelog": []
+}
